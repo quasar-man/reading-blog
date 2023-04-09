@@ -10,16 +10,23 @@ orbs:
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  build:
+  rubocop:
     docker:
       - image: cimg/ruby:3.1.0
+        environment:
+          - BUNDLER_VERSION: 2.3.3
+          - RAILS_ENV: 'test'
+          - DB_HOST: 127.0.0.1
+      - image: cimg/postgres:15.2-postgis
+        auth:
+          username: $DOCKERHUB_PASSWORD
+          password: $DOCKERHUB_USER
     executor: ruby/default
     steps:
       - checkout
       - run:
-          name: Which bundler?
-          command: bundle -v
-      - ruby/bundle-install
+          name: bundle install
+          command: bundle install --path vendor/bundle
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
@@ -27,4 +34,4 @@ workflows:
   sample: # This is the name of the workflow, feel free to change it to better match your workflow.
     # Inside the workflow, you define the jobs you want to run.
     jobs:
-      - build
+      - rubocop
