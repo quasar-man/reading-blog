@@ -10,28 +10,57 @@ orbs:
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  rubocop:
+  rspec:
     docker:
       - image: cimg/ruby:3.1.0
         environment:
-          - BUNDLER_VERSION: 2.3.3
-          - RAILS_ENV: 'test'
-          - DB_HOST: 127.0.0.1
+          BUNDLER_VERSION: 2.3.3
+          RAILS_ENV: test
       - image: cimg/postgres:15.2-postgis
         auth:
           username: $DOCKERHUB_PASSWORD
           password: $DOCKERHUB_USER
+        environment:
+          POSTGRES_DB: reading_blog_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
+    executor: ruby/default
+    steps:
+      - checkout
+      # - run: 
+      #     name: copy all rails app files # このディレクトリから一度全てコピーしないと正常にRailsプロジェクトとして認識されない（理由はナゾ）
+      #     command: find . -type f | xargs rm -f && cp -pR /tmp/_circleci_local_build_repo/* /home/circleci/project
+      - run:
+          name: bundle install
+          command: bundle config set path vendor/bundle && bundle install
+      - run:
+          name: db create
+          command: bundle exec rails db:create
+      - run:
+          name: db migrate
+          command: bundle exec rails db:migrate
+      - run:
+          name: execute rspec
+          command: bundle exec rspec
+  rubocop:
+    docker:
+      - image: cimg/ruby:3.1.0
     executor: ruby/default
     steps:
       - checkout
       - run:
           name: bundle install
-          command: bundle install --path vendor/bundle
+          command: bundle config set path vendor/bundle && bundle install
+      - run:
+          name: execute rubocop
+          command: bundle exec rubocop
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
-  sample: # This is the name of the workflow, feel free to change it to better match your workflow.
+  all_check: # This is the name of the workflow, feel free to change it to better match your workflow.
     # Inside the workflow, you define the jobs you want to run.
     jobs:
       - rubocop
+      - rspec
